@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
+  <title>Guitar Flash - Con Grabador Integrado</title>
+  <style>
+    * {
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #000;
+      background-image: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+      color: #fff;
+      font-family: 'Courier New', Courier, monospace;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* --- Interfaz Superior --- */
+    header {
+      height: 10vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.5);
+      border-bottom: 1px solid #333;
+      z-index: 10;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      color: #ff0;
+      text-shadow: 0 0 5px #ff0;
+    }
+
+    #marcador {
+      font-size: 14px;
+      color: #aaa;
+    }
+
+    #puntos {
+      color: #fff;
+      font-weight: bold;
+      font-size: 16px;
+    }
+
+    #combo {
+      color: #0ff;
+      font-size: 18px;
+      margin-left: 10px;
+      opacity: 0;
+    }
+
+    /* --- Botón Inicio --- */
+    #contenedor-inicio {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+
+    #btn-inicio {
+      background: linear-gradient(180deg, #28a745 0%, #1e7e34 100%);
+      color: white;
+      border: 2px solid #fff;
+      padding: 20px 40px;
+      font-size: 24px;
+      font-weight: bold;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 0 20px rgba(40, 167, 69, 0.5);
+    }
+
+    audio {
+      display: none;
+    }
+
+    /* --- Área de Juego (Pista) --- */
+    .juego-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .pista-contenedor {
+      perspective: 300px;
+      width: 100%;
+      max-width: 400px;
+      height: 100%;
+      position: relative;
+    }
+
+    #pista {
+      width: 100%;
+      height: 120%;
+      background: linear-gradient(180deg, #111 0%, #222 100%);
+      border-left: 4px solid #444;
+      border-right: 4px solid #444;
+      transform: rotateX(45deg);
+      transform-origin: bottom center;
+      position: absolute;
+      bottom: 0;
+    }
+
+    .carril {
+      width: 25%;
+      height: 100%;
+      float: left;
+      border-right: 1px solid rgba(255, 255, 255, 0.05);
+      position: relative;
+    }
+
+    .carril:last-child {
+      border-right: none;
+    }
+
+    /* Línea de Meta (Blanca) */
+    #linea-meta {
+      position: absolute;
+      bottom: 15%;
+      width: 100%;
+      height: 8px;
+      background: #fff;
+      box-shadow: 0 0 15px #fff, 0 0 5px #fff;
+      z-index: 5;
+    }
+
+    /* --- Notas --- */
+    .nota {
+      width: 90%;
+      height: 20px;
+      border-radius: 5px;
+      position: absolute;
+      left: 5%;
+      z-index: 10;
+      transform: translateY(-50%);
+      box-shadow: 0 0 10px currentColor;
+    }
+
+    /* Nota Larga (Cuerpo) */
+    .nota-larga-cuerpo {
+      width: 90%;
+      position: absolute;
+      left: 5%;
+      z-index: 9;
+      opacity: 0.7;
+      transform-origin: top center;
+      border-radius: 5px;
+    }
+
+    /* Colores */
+    .verdes {
+      background: #0f0;
+      color: #0f0;
+      border: 2px solid #fff;
+    }
+
+    .rojas {
+      background: #f00;
+      color: #f00;
+      border: 2px solid #fff;
+    }
+
+    .amarillas {
+      background: #ff0;
+      color: #ff0;
+      border: 2px solid #fff;
+    }
+
+    .azules {
+      background: #0cf;
+      color: #0cf;
+      border: 2px solid #fff;
+    }
+
+    .nota-larga-cuerpo.verdes {
+      background: linear-gradient(to bottom, #0f0, #040);
+    }
+
+    .nota-larga-cuerpo.rojas {
+      background: linear-gradient(to bottom, #f00, #400);
+    }
+
+    .nota-larga-cuerpo.amarillas {
+      background: linear-gradient(to bottom, #ff0, #440);
+    }
+
+    .nota-larga-cuerpo.azules {
+      background: linear-gradient(to bottom, #0cf, #034);
+    }
+
+    /* Efecto Hit */
+    @keyframes hit-glow {
+      0% {
+        opacity: 1;
+        transform: scale(1) translateY(-50%);
+      }
+
+      100% {
+        opacity: 0;
+        transform: scale(1.5) translateY(-50%);
+      }
+    }
+
+    .nota-hit {
+      animation: hit-glow 0.2s ease-out forwards;
+    }
+
+    /* --- Botones / Teclas (Área Táctil) --- */
+    .teclas-guia {
+      height: 15vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 15px;
+      width: 100%;
+      max-width: 400px;
+      padding: 10px;
+      background: #000;
+      border-top: 1px solid #333;
+      z-index: 10;
+    }
+
+    .tecla {
+      flex: 1;
+      height: 100%;
+      max-height: 70px;
+      border: 3px solid #fff;
+      border-radius: 15px;
+      font-weight: bold;
+      font-size: 24px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.05s;
+    }
+
+    .tecla::after {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 10px;
+      background: currentColor;
+      opacity: 0.2;
+    }
+
+    .tecla.presionada {
+      transform: scale(0.9);
+    }
+
+    .tecla.presionada::after {
+      opacity: 0.5;
+    }
+
+    /* Estilos específicos teclas */
+    .t-v {
+      border-color: #0f0;
+      color: #0f0;
+    }
+
+    .t-r {
+      border-color: #f00;
+      color: #f00;
+    }
+
+    .t-a {
+      border-color: #ff0;
+      color: #ff0;
+    }
+
+    .t-z {
+      border-color: #0cf;
+      color: #0cf;
+    }
+
+    .tecla.presionada.t-v {
+      background-color: #0f0;
+      color: #000;
+    }
+
+    .tecla.presionada.t-r {
+      background-color: #f00;
+      color: #000;
+    }
+
+    .tecla.presionada.t-a {
+      background-color: #ff0;
+      color: #000;
+    }
+
+    .tecla.presionada.t-z {
+      background-color: #0cf;
+      color: #000;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="contenedor-inicio">
+    <button id="btn-inicio">TOCA PARA EMPEZAR</button>
+  </div>
+
+  <header>
+    <h1>🎸 GUITAR FLASH: LA ETNNIA</h1>
+    <div id="marcador">Puntos: <span id="puntos">0</span> <span id="combo">x1</span></div>
+  </header>
+
+  <audio id="cancion" src="La Etnnia - Noicanicula (El Ataque del Metano)(M4A_128K).mp3" playsinline
+    preload="auto"></audio>
+
+  <div class="juego-container">
+    <div class="pista-contenedor">
+      <div id="pista">
+        <div class="carril" id="carril-0"></div>
+        <div class="carril" id="carril-1"></div>
+        <div class="carril" id="carril-2"></div>
+        <div class="carril" id="carril-3"></div>
+        <div id="linea-meta"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="teclas-guia">
+    <div class="tecla t-v" data-carril="0" id="btn-0">A</div>
+    <div class="tecla t-r" data-carril="1" id="btn-1">S</div>
+    <div class="tecla t-a" data-carril="2" id="btn-2">J</div>
+    <div class="tecla t-z" data-carril="3" id="btn-3">K</div>
+  </div>
+
+  <script>
+    // --- CONSTANTES Y CONFIGURACIÓN ---
+    const mapeoTeclas = { 'a': 0, 's': 1, 'j': 2, 'k': 3 };
+    const clasesColor = ['verdes', 'rojas', 'amarillas', 'azules'];
+
+    // Tiempos (ms)
+    const TIEMPO_VUELO = 1500;
+    const VENTANA_HIT = 100;
+    const MIN_DURACION_LARGA = 200;
+
+    // Coordenadas Y
+    let Y_START = 0;
+    let Y_META = 0;
+    let altoPista = 0;
+
+    // Estado del Juego
+    let puntos = 0;
+    let combo = 0;
+    let notasActivas = [];
+    let siguienteNotaIndex = 0;
+    let isPlaying = false;
+    let teclasPresionadas = [false, false, false, false];
+
+    // Nodos HTML
+    const audio = document.getElementById('cancion');
+    const pistaEl = document.getElementById('pista');
+    const metaEl = document.getElementById('linea-meta');
+    const puntosEl = document.getElementById('puntos');
+    const comboEl = document.getElementById('combo');
+
+    // Función auxiliar de tiempo
+    const min = (m, s, ms = 0) => (m * 60 + s) * 1000 + ms;
+
+    // --- MAPA DE LA CANCIÓN ---
+    const mapaCancion = [
+      { tiempo: min(0, 0, 628), carril: 0 },
+      { tiempo: min(0, 1, 564), carril: 1 },
+      { tiempo: min(0, 3, 329), carril: 0 },
+      { tiempo: min(0, 3, 483), carril: 1 },
+      { tiempo: min(0, 3, 824), carril: 2 },
+      { tiempo: min(0, 4, 14), carril: 2 },
+      { tiempo: min(0, 4, 292), carril: 3 },
+      { tiempo: min(0, 4, 490), carril: 0 },
+      { tiempo: min(0, 4, 669), carril: 1 },
+      { tiempo: min(0, 5, 379), carril: 3 },
+      { tiempo: min(0, 5, 596), carril: 3 },
+      { tiempo: min(0, 5, 813), carril: 0 },
+      { tiempo: min(0, 6, 100), carril: 1 },
+      { tiempo: min(0, 6, 362), carril: 2 },
+      { tiempo: min(0, 6, 595), carril: 2 },
+      { tiempo: min(0, 6, 792), carril: 3 },
+      { tiempo: min(0, 6, 900), carril: 0 },
+      { tiempo: min(0, 7, 20), carril: 1 },
+      { tiempo: min(0, 7, 307), carril: 3 },
+      { tiempo: min(0, 8, 603), carril: 0 },
+      { tiempo: min(0, 8, 719), carril: 1 },
+      { tiempo: min(0, 8, 917), carril: 3 },
+      { tiempo: min(0, 9, 141), carril: 3 },
+      { tiempo: min(0, 9, 359), carril: 0 },
+      { tiempo: min(0, 9, 428), carril: 1 },
+      { tiempo: min(0, 10, 43), carril: 2 },
+      { tiempo: min(0, 10, 357), carril: 2 },
+      { tiempo: min(0, 10, 508), carril: 0 },
+      { tiempo: min(0, 10, 600), carril: 1 },
+      { tiempo: min(0, 10, 852), carril: 3 },
+      { tiempo: min(0, 11, 123), carril: 3 },
+      { tiempo: min(0, 11, 266), carril: 0 },
+      { tiempo: min(0, 11, 355), carril: 1 },
+      { tiempo: min(0, 12, 75), carril: 2 },
+      { tiempo: min(0, 12, 427), carril: 2 },
+      { tiempo: min(0, 12, 659), carril: 0 },
+      { tiempo: min(0, 12, 779), carril: 1 },
+      { tiempo: min(0, 13, 20), carril: 3 },
+      { tiempo: min(0, 13, 325), carril: 3 },
+      { tiempo: min(0, 13, 499), carril: 3 },
+      { tiempo: min(0, 13, 569), carril: 0 },
+      { tiempo: min(0, 13, 596), carril: 1 },
+      { tiempo: min(0, 13, 804), carril: 2 },
+      { tiempo: min(0, 14, 64), carril: 2 },
+      { tiempo: min(0, 14, 389), carril: 2 },
+      { tiempo: min(0, 14, 920), carril: 0 },
+      { tiempo: min(0, 15, 20), carril: 1 },
+      { tiempo: min(0, 15, 422), carril: 2 },
+      { tiempo: min(0, 15, 755), carril: 2 },
+      { tiempo: min(0, 16, 150), carril: 2 },
+      { tiempo: min(0, 16, 611), carril: 3 },
+      { tiempo: min(0, 16, 843), carril: 3 },
+      { tiempo: min(0, 17, 98), carril: 0 },
+      { tiempo: min(0, 17, 203), carril: 1 },
+      { tiempo: min(0, 17, 446), carril: 3 },
+      { tiempo: min(0, 17, 655), carril: 3 },
+      { tiempo: min(0, 18, 410), carril: 0 },
+      { tiempo: min(0, 18, 573), carril: 1 },
+      { tiempo: min(0, 18, 851), carril: 3 },
+      { tiempo: min(0, 19, 184), carril: 3 },
+      { tiempo: min(0, 19, 769), carril: 1 },
+      { tiempo: min(0, 20, 244), carril: 2 },
+      { tiempo: min(0, 20, 515), carril: 2 },
+      { tiempo: min(0, 20, 794), carril: 0 },
+      { tiempo: min(0, 20, 929), carril: 1 },
+      { tiempo: min(0, 21, 324), carril: 3 },
+      { tiempo: min(0, 21, 622), carril: 3 },
+      { tiempo: min(0, 21, 901), carril: 0 },
+      { tiempo: min(0, 22, 82), carril: 1 },
+      { tiempo: min(0, 22, 485), carril: 2 },
+      { tiempo: min(0, 22, 775), carril: 2 },
+      { tiempo: min(0, 23, 61), carril: 0 },
+      { tiempo: min(0, 23, 197), carril: 1 },
+      { tiempo: min(0, 23, 603), carril: 2 },
+      { tiempo: min(0, 23, 901), carril: 2 },
+      { tiempo: min(0, 24, 188), carril: 2 },
+      { tiempo: min(0, 24, 339), carril: 1 },
+      { tiempo: min(0, 24, 486), carril: 0 },
+      { tiempo: min(0, 24, 753), carril: 2 },
+      { tiempo: min(0, 25, 51), carril: 2 },
+      { tiempo: min(0, 25, 359), carril: 1 },
+      { tiempo: min(0, 25, 492), carril: 0 },
+      { tiempo: min(0, 25, 643), carril: 1 },
+      { tiempo: min(0, 25, 941), carril: 2 },
+      { tiempo: min(0, 26, 204), carril: 2 },
+      { tiempo: min(0, 26, 525), carril: 0 },
+      { tiempo: min(0, 26, 680), carril: 1 },
+      { tiempo: min(0, 27, 48), carril: 2 },
+      { tiempo: min(0, 27, 338), carril: 2 },
+      { tiempo: min(0, 27, 714), carril: 0 },
+      { tiempo: min(0, 27, 960), carril: 2 },
+      { tiempo: min(0, 28, 236), carril: 0 },
+      { tiempo: min(0, 28, 417), carril: 2 },
+      { tiempo: min(0, 28, 604), carril: 0 },
+      { tiempo: min(0, 28, 820), carril: 2 },
+      { tiempo: min(0, 29, 37), carril: 2 },
+      { tiempo: min(0, 29, 253), carril: 2 },
+      { tiempo: min(0, 29, 578), carril: 2 },
+      { tiempo: min(0, 29, 819), carril: 0 },
+      { tiempo: min(0, 29, 977), carril: 1 },
+      { tiempo: min(0, 30, 163), carril: 2 },
+      { tiempo: min(0, 30, 441), carril: 2 },
+      { tiempo: min(0, 30, 693), carril: 2 },
+      { tiempo: min(0, 30, 774), carril: 0 },
+      { tiempo: min(0, 30, 856), carril: 1 },
+      { tiempo: min(0, 30, 902), carril: 2 },
+      { tiempo: min(0, 30, 910), carril: 3 },
+      { tiempo: min(0, 31, 332), carril: 1 },
+      { tiempo: min(0, 31, 348), carril: 0 },
+      { tiempo: min(0, 31, 359), carril: 2 },
+      { tiempo: min(0, 31, 359), carril: 3 },
+      { tiempo: min(0, 31, 935), carril: 2 },
+      { tiempo: min(0, 31, 943), carril: 3 },
+      { tiempo: min(0, 31, 952), carril: 1 },
+      { tiempo: min(0, 31, 963), carril: 0 },
+      { tiempo: min(0, 32, 609), carril: 0 },
+      { tiempo: min(0, 32, 620), carril: 1 },
+      { tiempo: min(0, 32, 629), carril: 2 },
+      { tiempo: min(0, 32, 629), carril: 3 },
+      { tiempo: min(0, 33, 464), carril: 2 },
+      { tiempo: min(0, 33, 473), carril: 3 },
+      { tiempo: min(0, 33, 484), carril: 0 },
+      { tiempo: min(0, 33, 484), carril: 1 },
+      { tiempo: min(0, 34, 293), carril: 3 },
+      { tiempo: min(0, 34, 293), carril: 1 },
+      { tiempo: min(0, 34, 293), carril: 2 },
+      { tiempo: min(0, 34, 308), carril: 0 },
+      { tiempo: min(0, 35, 94), carril: 3 },
+      { tiempo: min(0, 35, 94), carril: 2 },
+      { tiempo: min(0, 35, 101), carril: 0 },
+      { tiempo: min(0, 35, 109), carril: 1 },
+      { tiempo: min(0, 35, 860), carril: 3 },
+      { tiempo: min(0, 35, 868), carril: 2 },
+      { tiempo: min(0, 35, 877), carril: 0 },
+      { tiempo: min(0, 35, 877), carril: 1 },
+      { tiempo: min(0, 36, 569), carril: 0 },
+      { tiempo: min(0, 36, 569), carril: 1 },
+      { tiempo: min(0, 36, 569), carril: 3 },
+      { tiempo: min(0, 36, 579), carril: 2 },
+      { tiempo: min(0, 37, 261), carril: 1 },
+      { tiempo: min(0, 37, 270), carril: 3 },
+      { tiempo: min(0, 37, 288), carril: 0 },
+      { tiempo: min(0, 37, 299), carril: 2 },
+      { tiempo: min(0, 38, 124), carril: 1 },
+      { tiempo: min(0, 38, 135), carril: 0 },
+      { tiempo: min(0, 38, 170), carril: 3 },
+      { tiempo: min(0, 38, 181), carril: 2 },
+      { tiempo: min(0, 38, 837), carril: 0 },
+      { tiempo: min(0, 38, 837), carril: 1 },
+      { tiempo: min(0, 38, 863), carril: 2 },
+      { tiempo: min(0, 38, 863), carril: 3 },
+      { tiempo: min(0, 39, 691), carril: 0 },
+      { tiempo: min(0, 39, 699), carril: 1 },
+      { tiempo: min(0, 39, 726), carril: 3 },
+      { tiempo: min(0, 39, 753), carril: 2 },
+      { tiempo: min(0, 40, 446), carril: 1 },
+      { tiempo: min(0, 40, 458), carril: 0 },
+      { tiempo: min(0, 40, 484), carril: 3 },
+      { tiempo: min(0, 40, 500), carril: 2 },
+      { tiempo: min(0, 40, 933), carril: 0 },
+      { tiempo: min(0, 41, 382), carril: 1 },
+      { tiempo: min(0, 41, 708), carril: 2 },
+      { tiempo: min(0, 42, 48), carril: 2 },
+      { tiempo: min(0, 42, 354), carril: 0 },
+      { tiempo: min(0, 42, 605), carril: 1 },
+      { tiempo: min(0, 43, 11), carril: 2 },
+      { tiempo: min(0, 43, 336), carril: 2 },
+      { tiempo: min(0, 43, 650), carril: 3 },
+      { tiempo: min(0, 43, 965), carril: 2 },
+      { tiempo: min(0, 44, 324), carril: 2 },
+      { tiempo: min(0, 44, 648), carril: 1 },
+      { tiempo: min(0, 44, 811), carril: 0 },
+      { tiempo: min(0, 44, 966), carril: 1 },
+      { tiempo: min(0, 45, 334), carril: 2 },
+      { tiempo: min(0, 45, 647), carril: 2 },
+      { tiempo: min(0, 45, 964), carril: 3 },
+      { tiempo: min(0, 46, 204), carril: 0 },
+      { tiempo: min(0, 46, 324), carril: 1 },
+      { tiempo: min(0, 46, 622), carril: 2 },
+      { tiempo: min(0, 47, 277), carril: 1 },
+      { tiempo: min(0, 47, 447), carril: 0 },
+      { tiempo: min(0, 47, 636), carril: 1 },
+      { tiempo: min(0, 47, 880), carril: 3 },
+      { tiempo: min(0, 48, 473), carril: 3 },
+      { tiempo: min(0, 48, 858), carril: 1 },
+      { tiempo: min(0, 49, 41), carril: 0 },
+      { tiempo: min(0, 49, 184), carril: 1 },
+      { tiempo: min(0, 49, 308), carril: 2 },
+      { tiempo: min(0, 49, 501), carril: 2 },
+      { tiempo: min(0, 49, 795), carril: 2 },
+      { tiempo: min(0, 49, 939), carril: 1 },
+      { tiempo: min(0, 50, 20), carril: 0 },
+      { tiempo: min(0, 50, 174), carril: 1 },
+      { tiempo: min(0, 50, 469), carril: 3 },
+      { tiempo: min(0, 50, 686), carril: 3 },
+      { tiempo: min(0, 50, 859), carril: 3 },
+      { tiempo: min(0, 51, 11), carril: 0 },
+      { tiempo: min(0, 51, 649), carril: 1 },
+      { tiempo: min(0, 51, 812), carril: 2 },
+      { tiempo: min(0, 51, 982), carril: 2 },
+      { tiempo: min(0, 52, 361), carril: 2 },
+      { tiempo: min(0, 52, 578), carril: 3 },
+      { tiempo: min(0, 52, 729), carril: 0 },
+      { tiempo: min(0, 52, 822), carril: 1 },
+      { tiempo: min(0, 53, 35), carril: 2 },
+      { tiempo: min(0, 53, 243), carril: 2 },
+      { tiempo: min(0, 53, 402), carril: 2 },
+      { tiempo: min(0, 53, 666), carril: 3 },
+      { tiempo: min(0, 54, 80), carril: 3 },
+      { tiempo: min(0, 54, 223), carril: 0 },
+      { tiempo: min(0, 54, 347), carril: 1 },
+      { tiempo: min(0, 54, 664), carril: 2 },
+      { tiempo: min(0, 54, 969), carril: 2 },
+      { tiempo: min(0, 55, 140), carril: 2 },
+      { tiempo: min(0, 55, 249), carril: 0 },
+      { tiempo: min(0, 55, 357), carril: 1 },
+      { tiempo: min(0, 55, 709), carril: 2 },
+      { tiempo: min(0, 55, 960), carril: 2 },
+      { tiempo: min(0, 55, 980), carril: 2 },
+      { tiempo: min(0, 56, 142), carril: 2 },
+      { tiempo: min(0, 56, 309), carril: 2 },
+      { tiempo: min(0, 56, 707), carril: 3 },
+      { tiempo: min(0, 56, 796), carril: 0 },
+      { tiempo: min(0, 56, 897), carril: 1 },
+      { tiempo: min(0, 57, 60), carril: 2 },
+      { tiempo: min(0, 57, 230), carril: 2 },
+      { tiempo: min(0, 57, 537), carril: 2 },
+      { tiempo: min(0, 57, 760), carril: 1 },
+      { tiempo: min(0, 57, 876), carril: 0 },
+      { tiempo: min(0, 58, 38), carril: 1 },
+      { tiempo: min(0, 58, 263), carril: 2 },
+      { tiempo: min(0, 58, 470), carril: 2 },
+      { tiempo: min(0, 58, 604), carril: 2 },
+      { tiempo: min(0, 58, 812), carril: 3 },
+      { tiempo: min(0, 59, 308), carril: 3 },
+      { tiempo: min(0, 59, 505), carril: 3 },
+      { tiempo: min(0, 59, 792), carril: 0 },
+      { tiempo: min(1, 0, 36), carril: 1 },
+      { tiempo: min(1, 0, 450), carril: 2 },
+      { tiempo: min(1, 0, 756), carril: 2 },
+      { tiempo: min(1, 0, 856), carril: 1 },
+      { tiempo: min(1, 0, 976), carril: 0 },
+      { tiempo: min(1, 1, 123), carril: 1 },
+      { tiempo: min(1, 1, 475), carril: 3 },
+      { tiempo: min(1, 1, 900), carril: 3 },
+      { tiempo: min(1, 2, 59), carril: 0 },
+      { tiempo: min(1, 2, 141), carril: 1 },
+      { tiempo: min(1, 2, 365), carril: 2 },
+      { tiempo: min(1, 2, 718), carril: 2 },
+      { tiempo: min(1, 2, 888), carril: 2 },
+      { tiempo: min(1, 3, 4), carril: 1 },
+      { tiempo: min(1, 3, 147), carril: 2 },
+      { tiempo: min(1, 3, 294), carril: 0 },
+      { tiempo: min(1, 3, 430), carril: 1 },
+      { tiempo: min(1, 3, 619), carril: 2 },
+      { tiempo: min(1, 3, 789), carril: 0 },
+      { tiempo: min(1, 4, 22), carril: 3 },
+      { tiempo: min(1, 4, 436), carril: 3 },
+      { tiempo: min(1, 4, 575), carril: 0 },
+      { tiempo: min(1, 4, 985), carril: 1 },
+      { tiempo: min(1, 5, 345), carril: 2 },
+      { tiempo: min(1, 5, 535), carril: 2 },
+      { tiempo: min(1, 5, 911), carril: 2 },
+      { tiempo: min(1, 6, 235), carril: 1 },
+      { tiempo: min(1, 6, 596), carril: 0 },
+      { tiempo: min(1, 7, 72), carril: 3 },
+      { tiempo: min(1, 7, 188), carril: 0 },
+      { tiempo: min(1, 7, 323), carril: 1 },
+      { tiempo: min(1, 7, 559), carril: 2 },
+      { tiempo: min(1, 7, 907), carril: 2 },
+      { tiempo: min(1, 8, 197), carril: 1 },
+      { tiempo: min(1, 8, 511), carril: 0 },
+      { tiempo: min(1, 8, 647), carril: 1 },
+      { tiempo: min(1, 8, 901), carril: 3 },
+      { tiempo: min(1, 9, 204), carril: 3 },
+      { tiempo: min(1, 9, 413), carril: 0 },
+      { tiempo: min(1, 9, 540), carril: 1 },
+      { tiempo: min(1, 9, 788), carril: 2 },
+      { tiempo: min(1, 10, 32), carril: 2 },
+      { tiempo: min(1, 10, 403), carril: 2 },
+      { tiempo: min(1, 10, 724), carril: 1 },
+      { tiempo: min(1, 11, 50), carril: 0 },
+      { tiempo: min(1, 11, 186), carril: 1 },
+      { tiempo: min(1, 11, 437), carril: 3 },
+      { tiempo: min(1, 11, 707), carril: 3 },
+      { tiempo: min(1, 12, 13), carril: 3 },
+      { tiempo: min(1, 12, 84), carril: 0 },
+      { tiempo: min(1, 12, 222), carril: 1 },
+      { tiempo: min(1, 12, 408), carril: 2 },
+      { tiempo: min(1, 12, 644), carril: 2 },
+      { tiempo: min(1, 13, 12), carril: 2 },
+      { tiempo: min(1, 13, 379), carril: 1 },
+      { tiempo: min(1, 13, 661), carril: 0 },
+      { tiempo: min(1, 13, 777), carril: 1 },
+      { tiempo: min(1, 14, 21), carril: 3 },
+      { tiempo: min(1, 14, 351), carril: 3 },
+      { tiempo: min(1, 14, 741), carril: 0 },
+      { tiempo: min(1, 14, 966), carril: 1 },
+      { tiempo: min(1, 15, 512), carril: 2 },
+      { tiempo: min(1, 16, 197), carril: 3 },
+      { tiempo: min(1, 16, 413), carril: 0 },
+      { tiempo: min(1, 16, 835), carril: 1 },
+      { tiempo: min(1, 17, 485), carril: 2 },
+      { tiempo: min(1, 17, 996), carril: 1 },
+      { tiempo: min(1, 18, 302), carril: 0 },
+      { tiempo: min(1, 18, 654), carril: 3 },
+      { tiempo: min(1, 18, 858), carril: 3 },
+      { tiempo: min(1, 19, 30), carril: 0 },
+      { tiempo: min(1, 19, 258), carril: 1 },
+      { tiempo: min(1, 19, 490), carril: 2 },
+      { tiempo: min(1, 19, 796), carril: 2 },
+      { tiempo: min(1, 20, 140), carril: 2 },
+      { tiempo: min(1, 20, 454), carril: 2 },
+      { tiempo: min(1, 21, 73), carril: 3 },
+      { tiempo: min(1, 21, 387), carril: 0 },
+      { tiempo: min(1, 21, 604), carril: 1 },
+      { tiempo: min(1, 22, 91), carril: 1 },
+      { tiempo: min(1, 22, 470), carril: 1 },
+      { tiempo: min(1, 22, 830), carril: 0 },
+      { tiempo: min(1, 23, 143), carril: 2 },
+      { tiempo: min(1, 23, 449), carril: 2 },
+      { tiempo: min(1, 23, 739), carril: 3 },
+      { tiempo: min(1, 24, 34), carril: 0 },
+      { tiempo: min(1, 25, 230), carril: 0 },
+      { tiempo: min(1, 25, 644), carril: 1 },
+      { tiempo: min(1, 26, 321), carril: 2 },
+      { tiempo: min(1, 26, 653), carril: 3 },
+      { tiempo: min(1, 27, 238), carril: 2 },
+      { tiempo: min(1, 27, 869), carril: 1 },
+      { tiempo: min(1, 29, 165), carril: 0 },
+      { tiempo: min(1, 30, 512), carril: 2 },
+      { tiempo: min(1, 30, 837), carril: 3 },
+      { tiempo: min(1, 31, 422), carril: 1 },
+      { tiempo: min(1, 31, 765), carril: 0 },
+      { tiempo: min(1, 31, 916), carril: 1 },
+      { tiempo: min(1, 32, 312), carril: 2 },
+      { tiempo: min(1, 33, 15), carril: 3 },
+      { tiempo: min(1, 34, 320), carril: 0 },
+      { tiempo: min(1, 35, 624), carril: 2 },
+      { tiempo: min(1, 35, 950), carril: 1 },
+      { tiempo: min(1, 36, 498), carril: 0 },
+      { tiempo: min(1, 36, 893), carril: 1 },
+      { tiempo: min(1, 37, 45), carril: 3 },
+      { tiempo: min(1, 37, 443), carril: 0 },
+      { tiempo: min(1, 38, 182), carril: 2 },
+      { tiempo: min(1, 39, 459), carril: 0 },
+      { tiempo: min(1, 40, 508), carril: 0 },
+      { tiempo: min(1, 40, 709), carril: 1 },
+      { tiempo: min(1, 41, 96), carril: 2 },
+      { tiempo: min(1, 41, 437), carril: 2 },
+      { tiempo: min(1, 41, 762), carril: 2 },
+      { tiempo: min(1, 42, 40), carril: 3 },
+      { tiempo: min(1, 42, 129), carril: 0 },
+      { tiempo: min(1, 42, 238), carril: 1 },
+      { tiempo: min(1, 42, 427), carril: 2 },
+      { tiempo: min(1, 42, 706), carril: 2 },
+      { tiempo: min(1, 43, 20), carril: 2 },
+      { tiempo: min(1, 43, 301), carril: 0 },
+      { tiempo: min(1, 43, 462), carril: 3 },
+      { tiempo: min(1, 43, 661), carril: 3 },
+      { tiempo: min(1, 43, 840), carril: 3 },
+      { tiempo: min(1, 44, 56), carril: 2 },
+      { tiempo: min(1, 44, 235), carril: 0 },
+      { tiempo: min(1, 44, 397), carril: 1 },
+      { tiempo: min(1, 44, 676), carril: 3 },
+      { tiempo: min(1, 44, 885), carril: 3 },
+      { tiempo: min(1, 45, 1), carril: 2 },
+      { tiempo: min(1, 45, 288), carril: 3 },
+      { tiempo: min(1, 45, 872), carril: 0 },
+      { tiempo: min(1, 46, 205), carril: 1 },
+      { tiempo: min(1, 46, 530), carril: 2 },
+      { tiempo: min(1, 46, 828), carril: 3 },
+      { tiempo: min(1, 47, 6), carril: 2 },
+      { tiempo: min(1, 47, 203), carril: 1 },
+      { tiempo: min(1, 47, 493), carril: 0 },
+      { tiempo: min(1, 47, 845), carril: 2 },
+      { tiempo: min(1, 48, 321), carril: 2 },
+      { tiempo: min(1, 48, 438), carril: 0 },
+      { tiempo: min(1, 48, 546), carril: 1 },
+      { tiempo: min(1, 48, 858), carril: 2 },
+      { tiempo: min(1, 49, 142), carril: 2 },
+      { tiempo: min(1, 49, 618), carril: 3 },
+      { tiempo: min(1, 49, 796), carril: 3 },
+      { tiempo: min(1, 49, 912), carril: 2 },
+      { tiempo: min(1, 50, 94), carril: 2 },
+      { tiempo: min(1, 50, 221), carril: 0 },
+      { tiempo: min(1, 50, 326), carril: 1 },
+      { tiempo: min(1, 50, 516), carril: 2 },
+      { tiempo: min(1, 50, 875), carril: 2 },
+      { tiempo: min(1, 51, 119), carril: 2 },
+      { tiempo: min(1, 51, 425), carril: 1 },
+      { tiempo: min(1, 51, 535), carril: 0 },
+      { tiempo: min(1, 51, 696), carril: 1 },
+      { tiempo: min(1, 51, 839), carril: 3 },
+      { tiempo: min(1, 52, 72), carril: 3 },
+      { tiempo: min(1, 52, 397), carril: 3 },
+      { tiempo: min(1, 52, 683), carril: 2 },
+      { tiempo: min(1, 52, 857), carril: 1 },
+      { tiempo: min(1, 53, 19), carril: 0 },
+      { tiempo: min(1, 53, 349), carril: 2 },
+      { tiempo: min(1, 53, 685), carril: 2 },
+      { tiempo: min(1, 53, 902), carril: 0 },
+      { tiempo: min(1, 54, 18), carril: 1 },
+      { tiempo: min(1, 54, 285), carril: 3 },
+      { tiempo: min(1, 54, 522), carril: 3 },
+      { tiempo: min(1, 54, 683), carril: 3 },
+      { tiempo: min(1, 54, 900), carril: 2 },
+      { tiempo: min(1, 55, 34), carril: 1 },
+      { tiempo: min(1, 55, 133), carril: 0 },
+      { tiempo: min(1, 55, 276), carril: 1 },
+      { tiempo: min(1, 55, 620), carril: 2 },
+      { tiempo: min(1, 56, 69), carril: 2 },
+      { tiempo: min(1, 56, 247), carril: 3 },
+      { tiempo: min(1, 56, 464), carril: 2 },
+      { tiempo: min(1, 56, 669), carril: 1 },
+      { tiempo: min(1, 56, 906), carril: 0 },
+      { tiempo: min(1, 57, 428), carril: 0 },
+      { tiempo: min(1, 57, 605), carril: 1 },
+      { tiempo: min(1, 57, 814), carril: 2 },
+      { tiempo: min(1, 58, 155), carril: 2 },
+      { tiempo: min(1, 58, 651), carril: 2 },
+      { tiempo: min(1, 58, 841), carril: 3 },
+      { tiempo: min(1, 59, 30), carril: 3 },
+      { tiempo: min(1, 59, 208), carril: 3 },
+      { tiempo: min(1, 59, 370), carril: 0 },
+      { tiempo: min(1, 59, 541), carril: 1 },
+      { tiempo: min(1, 59, 766), carril: 2 },
+      { tiempo: min(1, 59, 947), carril: 2 },
+      { tiempo: min(2, 0, 152), carril: 2 },
+      { tiempo: min(2, 0, 268), carril: 1 },
+      { tiempo: min(2, 0, 396), carril: 0 },
+      { tiempo: min(2, 0, 531), carril: 1 },
+      { tiempo: min(2, 0, 759), carril: 3 },
+      { tiempo: min(2, 1, 100), carril: 3 },
+      { tiempo: min(2, 1, 448), carril: 0 },
+      { tiempo: min(2, 2, 745), carril: 1 },
+      { tiempo: min(2, 3, 995), carril: 2 },
+      { tiempo: min(2, 5, 272), carril: 3 },
+      { tiempo: min(2, 6, 569), carril: 0 },
+      { tiempo: min(2, 7, 884), carril: 1 },
+      { tiempo: min(2, 9, 80), carril: 2 },
+      { tiempo: min(2, 10, 341), carril: 3 },
+      { tiempo: min(2, 11, 770), carril: 0 },
+      { tiempo: min(2, 13, 12), carril: 1 },
+      { tiempo: min(2, 14, 270), carril: 2 },
+      { tiempo: min(2, 15, 531), carril: 3 },
+      { tiempo: min(2, 16, 862), carril: 0 },
+      { tiempo: min(2, 18, 132), carril: 1 },
+      { tiempo: min(2, 19, 436), carril: 2 },
+      { tiempo: min(2, 20, 734), carril: 3 },
+      { tiempo: min(2, 21, 603), carril: 0 },
+      { tiempo: min(2, 21, 747), carril: 1 },
+      { tiempo: min(2, 22, 91), carril: 3 },
+      { tiempo: min(2, 22, 443), carril: 3 },
+      { tiempo: min(2, 22, 702), carril: 0 },
+      { tiempo: min(2, 22, 846), carril: 1 },
+      { tiempo: min(2, 23, 82), carril: 2 },
+      { tiempo: min(2, 23, 403), carril: 2 },
+      { tiempo: min(2, 23, 585), carril: 2 },
+      { tiempo: min(2, 23, 747), carril: 2 },
+      { tiempo: min(2, 24, 35), carril: 1 },
+      { tiempo: min(2, 24, 559), carril: 0 },
+      { tiempo: min(2, 24, 780), carril: 3 },
+      { tiempo: min(2, 24, 982), carril: 3 },
+      { tiempo: min(2, 25, 230), carril: 3 },
+      { tiempo: min(2, 25, 411), carril: 2 },
+      { tiempo: min(2, 25, 682), carril: 1 },
+      { tiempo: min(2, 25, 690), carril: 2 },
+      { tiempo: min(2, 25, 853), carril: 0 },
+      { tiempo: min(2, 25, 899), carril: 3 },
+      { tiempo: min(2, 26, 85), carril: 3 },
+      { tiempo: min(2, 26, 275), carril: 3 },
+      { tiempo: min(2, 26, 518), carril: 1 },
+      { tiempo: min(2, 26, 960), carril: 2 },
+      { tiempo: min(2, 27, 238), carril: 2 },
+      { tiempo: min(2, 27, 524), carril: 0 },
+      { tiempo: min(2, 27, 912), carril: 1 },
+      { tiempo: min(2, 28, 203), carril: 2 },
+      { tiempo: min(2, 28, 388), carril: 3 },
+      { tiempo: min(2, 28, 588), carril: 3 },
+      { tiempo: min(2, 28, 786), carril: 3 },
+      { tiempo: min(2, 28, 875), carril: 0 },
+      { tiempo: min(2, 29, 38), carril: 1 },
+      { tiempo: min(2, 29, 209), carril: 2 },
+      { tiempo: min(2, 29, 506), carril: 2 },
+      { tiempo: min(2, 29, 812), carril: 2 },
+      { tiempo: min(2, 29, 929), carril: 1 },
+      { tiempo: min(2, 30, 36), carril: 0 },
+      { tiempo: min(2, 30, 431), carril: 3 },
+      { tiempo: min(2, 30, 613), carril: 3 },
+      { tiempo: min(2, 30, 810), carril: 3 },
+      { tiempo: min(2, 31, 61), carril: 0 },
+      { tiempo: min(2, 31, 189), carril: 1 },
+      { tiempo: min(2, 31, 422), carril: 2 },
+      { tiempo: min(2, 31, 719), carril: 2 },
+      { tiempo: min(2, 32, 33), carril: 2 },
+      { tiempo: min(2, 32, 169), carril: 1 },
+      { tiempo: min(2, 32, 285), carril: 0 },
+      { tiempo: min(2, 32, 698), carril: 3 },
+      { tiempo: min(2, 33, 24), carril: 3 },
+      { tiempo: min(2, 33, 330), carril: 0 },
+      { tiempo: min(2, 33, 438), carril: 1 },
+      { tiempo: min(2, 33, 654), carril: 2 },
+      { tiempo: min(2, 33, 960), carril: 2 },
+      { tiempo: min(2, 34, 301), carril: 2 },
+      { tiempo: min(2, 34, 940), carril: 1 },
+      { tiempo: min(2, 35, 272), carril: 3 },
+      { tiempo: min(2, 35, 605), carril: 0 },
+      { tiempo: min(2, 35, 922), carril: 0 },
+      { tiempo: min(2, 36, 236), carril: 1 },
+      { tiempo: min(2, 36, 364), carril: 2 },
+      { tiempo: min(2, 36, 541), carril: 3 },
+      { tiempo: min(2, 36, 696), carril: 0 },
+      { tiempo: min(2, 37, 487), carril: 1 },
+      { tiempo: min(2, 37, 873), carril: 1 },
+      { tiempo: min(2, 38, 143), carril: 0 },
+      { tiempo: min(2, 38, 279), carril: 1 },
+      { tiempo: min(2, 38, 469), carril: 2 },
+      { tiempo: min(2, 38, 821), carril: 2 },
+      { tiempo: min(2, 39, 115), carril: 3 },
+      { tiempo: min(2, 39, 196), carril: 0 },
+      { tiempo: min(2, 39, 332), carril: 1 },
+      { tiempo: min(2, 39, 440), carril: 2 },
+      { tiempo: min(2, 40, 68), carril: 0 },
+      { tiempo: min(2, 40, 98), carril: 2 },
+      { tiempo: min(2, 40, 311), carril: 3 },
+      { tiempo: min(2, 40, 330), carril: 0 },
+      { tiempo: min(2, 40, 628), carril: 1 },
+      { tiempo: min(2, 40, 775), carril: 3 },
+      { tiempo: min(2, 40, 961), carril: 0 },
+      { tiempo: min(2, 41, 3), carril: 3 },
+      { tiempo: min(2, 41, 147), carril: 1 },
+      { tiempo: min(2, 41, 205), carril: 2 },
+      { tiempo: min(2, 41, 391), carril: 2 },
+      { tiempo: min(2, 41, 429), carril: 1 },
+      { tiempo: min(2, 41, 654), carril: 3 },
+      { tiempo: min(2, 41, 654), carril: 0 },
+      { tiempo: min(2, 41, 980), carril: 0 },
+      { tiempo: min(2, 42, 15), carril: 3 },
+      { tiempo: min(2, 42, 239), carril: 0 },
+      { tiempo: min(2, 42, 265), carril: 3 },
+      { tiempo: min(2, 42, 698), carril: 0 },
+      { tiempo: min(2, 42, 707), carril: 1 },
+      { tiempo: min(2, 42, 707), carril: 2 },
+      { tiempo: min(2, 42, 714), carril: 3 },
+      { tiempo: min(2, 43, 983), carril: 0 },
+      { tiempo: min(2, 45, 253), carril: 1 },
+      { tiempo: min(2, 46, 557), carril: 2 },
+      { tiempo: min(2, 47, 915), carril: 0 },
+      { tiempo: min(2, 49, 166), carril: 1 },
+      { tiempo: min(2, 50, 408), carril: 2 },
+      { tiempo: min(2, 51, 661), carril: 3 },
+      { tiempo: min(2, 52, 989), carril: 3 },
+      { tiempo: min(2, 54, 251), carril: 2 },
+      { tiempo: min(2, 55, 539), carril: 1 },
+      { tiempo: min(2, 56, 844), carril: 0 },
+      { tiempo: min(2, 58, 229), carril: 0 },
+      { tiempo: min(2, 59, 433), carril: 1 },
+      { tiempo: min(3, 0, 775), carril: 2 },
+      { tiempo: min(3, 1, 979), carril: 3 },
+      { tiempo: min(3, 3, 360), carril: 3 },
+      { tiempo: min(3, 3, 968), carril: 0 },
+      { tiempo: min(3, 4, 618), carril: 1 },
+      { tiempo: min(3, 5, 202), carril: 2 },
+      { tiempo: min(3, 5, 524), carril: 3 },
+      { tiempo: min(3, 5, 876), carril: 0 },
+      { tiempo: min(3, 6, 550), carril: 1 },
+      { tiempo: min(3, 7, 189), carril: 2 },
+      { tiempo: min(3, 7, 819), carril: 0 },
+      { tiempo: min(3, 8, 144), carril: 3 },
+      { tiempo: min(3, 8, 485), carril: 1 },
+      { tiempo: min(3, 8, 620), carril: 2 },
+      { tiempo: min(3, 8, 790), carril: 2 },
+      { tiempo: min(3, 9, 80), carril: 2 },
+      { tiempo: min(3, 9, 279), carril: 1 },
+      { tiempo: min(3, 9, 378), carril: 3 },
+      { tiempo: min(3, 9, 559), carril: 3 },
+      { tiempo: min(3, 9, 719), carril: 3 },
+      { tiempo: min(3, 9, 819), carril: 0 },
+      { tiempo: min(3, 9, 935), carril: 1 },
+      { tiempo: min(3, 10, 79), carril: 2 },
+      { tiempo: min(3, 10, 439), carril: 2 },
+      { tiempo: min(3, 10, 950), carril: 2 },
+      { tiempo: min(3, 11, 62), carril: 1 },
+      { tiempo: min(3, 11, 178), carril: 0 },
+      { tiempo: min(3, 11, 310), carril: 3 },
+      { tiempo: min(3, 11, 492), carril: 3 },
+      { tiempo: min(3, 11, 762), carril: 3 },
+      { tiempo: min(3, 11, 886), carril: 1 },
+      { tiempo: min(3, 12, 14), carril: 0 },
+      { tiempo: min(3, 12, 149), carril: 1 },
+      { tiempo: min(3, 12, 227), carril: 2 },
+      { tiempo: min(3, 12, 409), carril: 2 },
+      { tiempo: min(3, 12, 587), carril: 2 },
+      { tiempo: min(3, 12, 749), carril: 2 },
+      { tiempo: min(3, 12, 939), carril: 0 },
+      { tiempo: min(3, 13, 460), carril: 0 },
+      { tiempo: min(3, 13, 657), carril: 1 },
+      { tiempo: min(3, 13, 759), carril: 3 },
+      { tiempo: min(3, 14, 154), carril: 3 },
+      { tiempo: min(3, 14, 622), carril: 3 },
+      { tiempo: min(3, 14, 955), carril: 0 },
+      { tiempo: min(3, 15, 91), carril: 1 },
+      { tiempo: min(3, 15, 254), carril: 2 },
+      { tiempo: min(3, 15, 586), carril: 2 },
+      { tiempo: min(3, 15, 927), carril: 2 },
+      { tiempo: min(3, 16, 116), carril: 1 },
+      { tiempo: min(3, 16, 244), carril: 0 },
+      { tiempo: min(3, 16, 837), carril: 3 },
+      { tiempo: min(3, 17, 134), carril: 3 },
+      { tiempo: min(3, 17, 270), carril: 0 },
+      { tiempo: min(3, 17, 394), carril: 1 },
+      { tiempo: min(3, 17, 548), carril: 2 },
+      { tiempo: min(3, 17, 719), carril: 2 },
+      { tiempo: min(3, 18, 52), carril: 2 },
+      { tiempo: min(3, 18, 364), carril: 1 },
+      { tiempo: min(3, 18, 776), carril: 3 },
+      { tiempo: min(3, 19, 139), carril: 3 },
+      { tiempo: min(3, 19, 456), carril: 0 },
+      { tiempo: min(3, 19, 580), carril: 1 },
+      { tiempo: min(3, 19, 781), carril: 2 },
+      { tiempo: min(3, 19, 932), carril: 2 },
+      { tiempo: min(3, 20, 156), carril: 2 },
+      { tiempo: min(3, 20, 365), carril: 2 },
+      { tiempo: min(3, 20, 517), carril: 2 },
+      { tiempo: min(3, 20, 760), carril: 0 },
+      { tiempo: min(3, 20, 768), carril: 1 },
+      { tiempo: min(3, 20, 779), carril: 2 },
+      { tiempo: min(3, 20, 787), carril: 3 },
+      { tiempo: min(3, 21, 379), carril: 0 },
+      { tiempo: min(3, 21, 522), carril: 1 },
+      { tiempo: min(3, 21, 785), carril: 2 },
+      { tiempo: min(3, 22, 57), carril: 2 },
+      { tiempo: min(3, 22, 254), carril: 3 },
+      { tiempo: min(3, 22, 390), carril: 0 },
+      { tiempo: min(3, 22, 424), carril: 2 },
+      { tiempo: min(3, 22, 478), carril: 1 },
+      { tiempo: min(3, 22, 703), carril: 2 },
+      { tiempo: min(3, 23, 9), carril: 2 },
+      { tiempo: min(3, 23, 341), carril: 2 },
+      { tiempo: min(3, 23, 349), carril: 3 },
+      { tiempo: min(3, 23, 369), carril: 0 },
+      { tiempo: min(3, 23, 369), carril: 1 },
+      { tiempo: min(3, 23, 837), carril: 2 },
+      { tiempo: min(3, 24, 53), carril: 2 },
+      { tiempo: min(3, 24, 332), carril: 0 },
+      { tiempo: min(3, 24, 665), carril: 3 },
+      { tiempo: min(3, 25, 59), carril: 3 },
+      { tiempo: min(3, 25, 296), carril: 3 },
+      { tiempo: min(3, 25, 419), carril: 0 },
+      { tiempo: min(3, 25, 609), carril: 1 },
+      { tiempo: min(3, 25, 923), carril: 2 },
+      { tiempo: min(3, 26, 588), carril: 2 },
+      { tiempo: min(3, 26, 886), carril: 0 },
+      { tiempo: min(3, 27, 211), carril: 3 },
+      { tiempo: min(3, 27, 749), carril: 1 },
+      { tiempo: min(3, 27, 795), carril: 2 },
+      { tiempo: min(3, 27, 993), carril: 3 },
+      { tiempo: min(3, 28, 4), carril: 0 },
+      { tiempo: min(3, 28, 435), carril: 0 },
+      { tiempo: min(3, 28, 454), carril: 3 },
+      { tiempo: min(3, 28, 713), carril: 0 },
+      { tiempo: min(3, 28, 724), carril: 3 },
+      { tiempo: min(3, 29, 146), carril: 0 },
+      { tiempo: min(3, 29, 154), carril: 1 },
+      { tiempo: min(3, 29, 165), carril: 3 },
+      { tiempo: min(3, 29, 173), carril: 2 },
+      { tiempo: min(3, 30, 451), carril: 1 },
+      { tiempo: min(3, 31, 763), carril: 2 },
+      { tiempo: min(3, 32, 970), carril: 0 },
+      { tiempo: min(3, 32, 997), carril: 3 },
+      { tiempo: min(3, 34, 320), carril: 0 },
+      { tiempo: min(3, 35, 524), carril: 1 },
+      { tiempo: min(3, 36, 840), carril: 2 },
+      { tiempo: min(3, 38, 171), carril: 3 },
+      { tiempo: min(3, 39, 448), carril: 3 },
+      { tiempo: min(3, 40, 718), carril: 2 },
+      { tiempo: min(3, 42, 3), carril: 1 },
+      { tiempo: min(3, 43, 307), carril: 0 },
+      { tiempo: min(3, 44, 623), carril: 1 },
+      { tiempo: min(3, 44, 662), carril: 2 },
+      { tiempo: min(3, 45, 927), carril: 0 },
+      { tiempo: min(3, 45, 954), carril: 3 },
+      { tiempo: min(3, 47, 250), carril: 1 },
+      { tiempo: min(3, 47, 269), carril: 2 },
+      { tiempo: min(3, 48, 411), carril: 1 },
+      { tiempo: min(3, 48, 419), carril: 0 },
+      { tiempo: min(3, 48, 427), carril: 3 },
+      { tiempo: min(3, 48, 446), carril: 2 },
+      { tiempo: min(3, 49, 761), carril: 0 },
+      { tiempo: min(3, 50, 389), carril: 1 },
+      { tiempo: min(3, 51, 93), carril: 2 },
+      { tiempo: min(3, 51, 662), carril: 3 },
+      { tiempo: min(3, 52, 37), carril: 2 },
+      { tiempo: min(3, 52, 382), carril: 1 },
+      { tiempo: min(3, 53, 36), carril: 0 },
+      { tiempo: min(3, 53, 659), carril: 1 },
+      { tiempo: min(3, 54, 251), carril: 2 },
+      { tiempo: min(3, 54, 657), carril: 3 },
+      { tiempo: min(3, 54, 998), carril: 2 },
+      { tiempo: min(3, 55, 555), carril: 1 },
+      { tiempo: min(3, 56, 213), carril: 0 },
+      { tiempo: min(3, 56, 763), carril: 0 },
+      { tiempo: min(3, 57, 176), carril: 1 },
+      { tiempo: min(3, 57, 525), carril: 2 },
+      { tiempo: min(3, 58, 191), carril: 3 },
+      { tiempo: min(3, 58, 822), carril: 0 },
+      { tiempo: min(3, 59, 433), carril: 1 },
+      { tiempo: min(3, 59, 812), carril: 2 },
+      { tiempo: min(4, 0, 172), carril: 3 },
+      { tiempo: min(4, 0, 749), carril: 3 },
+      { tiempo: min(4, 1, 414), carril: 2 },
+      { tiempo: min(4, 1, 945), carril: 1 },
+      { tiempo: min(4, 2, 367), carril: 0 },
+      { tiempo: min(4, 2, 707), carril: 1 },
+      { tiempo: min(4, 3, 357), carril: 2 },
+      { tiempo: min(4, 3, 995), carril: 3 },
+      { tiempo: min(4, 4, 537), carril: 0 },
+      { tiempo: min(4, 4, 857), carril: 1 },
+      { tiempo: min(4, 5, 203), carril: 2 },
+    ];
+
+    mapaCancion.sort((a, b) => a.tiempo - b.tiempo);
+
+    // ==========================================================
+    // === GRABADOR CORREGIDO ===
+    // ==========================================================
+    const notasGrabadas = [];
+
+    window.addEventListener('keydown', (e) => {
+      if (e.repeat || audio.paused) return;
+      const tecla = e.key.toLowerCase();
+      const carril = mapeoTeclas[tecla];
+
+      if (carril !== undefined) {
+        // El momento en que presionas ES el momento exacto de impacto en lalínea blanca
+        const msMetaTarget = Math.round(audio.currentTime * 1000);
+
+        const m = Math.floor(msMetaTarget / 60000);
+        const s = Math.floor((msMetaTarget % 60000) / 1000);
+        const ms = msMetaTarget % 1000;
+
+        const textoNota = `{ tiempo: min(${m}, ${s}, ${ms}), carril: ${carril} },`;
+
+        notasGrabadas.push(textoNota);
+        console.log(textoNota);
+      }
+    });
+
+    audio.addEventListener('ended', () => {
+      console.log("\n================ MAPA GENERADO (COPIAR Y PEGAR) ================\n");
+      console.log("const mapaCancion = [\n  " + notasGrabadas.join("\n  ") + "\n];");
+      console.log("\n===============================================================");
+    });
+    // ==========================================================
+    // ==========================================================
+
+    // --- INICIALIZACIÓN ---
+    function recalcularMedidas() {
+      altoPista = pistaEl.offsetHeight;
+      Y_META = metaEl.offsetTop + (metaEl.offsetHeight / 2);
+      Y_START = -100;
+    }
+
+    window.addEventListener('resize', recalcularMedidas);
+    recalcularMedidas();
+
+    // --- BUCLE DE JUEGO ---
+    function bucleJuego() {
+      if (!isPlaying || audio.paused) {
+        requestAnimationFrame(bucleJuego);
+        return;
+      }
+
+      const tiempoAudioMs = audio.currentTime * 1000;
+
+      while (siguienteNotaIndex < mapaCancion.length) {
+        const info = mapaCancion[siguienteNotaIndex];
+        if (tiempoAudioMs >= info.tiempo - TIEMPO_VUELO) {
+          crearNotaVisual(info);
+          siguienteNotaIndex++;
+        } else {
+          break;
+        }
+      }
+
+      for (let i = notasActivas.length - 1; i >= 0; i--) {
+        const nota = notasActivas[i];
+        const msDesdeNacimiento = tiempoAudioMs - (nota.tiempoTarget - TIEMPO_VUELO);
+        const fraccionVuelo = msDesdeNacimiento / TIEMPO_VUELO;
+        const distanciaTotal = Y_META - Y_START;
+        const actualY = Y_START + (distanciaTotal * fraccionVuelo);
+
+        nota.elemento.style.top = `${actualY}px`;
+
+        if (nota.isLarga && nota.cuerpoElemento) {
+          nota.cuerpoElemento.style.top = `${actualY}px`;
+          const altoCuerpoPx = distanciaTotal * (nota.duracion / TIEMPO_VUELO);
+
+          if (!nota.estaSiendoSostenida) {
+            nota.cuerpoElemento.style.height = `${altoCuerpoPx}px`;
+            nota.cuerpoElemento.style.transform = `scaleY(-1)`;
+          } else {
+            const msRestantesLarga = (nota.tiempoTarget + nota.duracion) - tiempoAudioMs;
+            const fraccionRestante = msRestantesLarga / nota.duracion;
+            nota.cuerpoElemento.style.height = `${altoCuerpoPx * fraccionRestante}px`;
+            nota.cuerpoElemento.style.top = `${Y_META}px`;
+            nota.cuerpoElemento.style.transform = `scaleY(-1)`;
+
+            actualizarPuntos(1);
+
+            if (tiempoAudioMs >= nota.tiempoTarget + nota.duracion) {
+              eliminarNota(i);
+              continue;
+            }
+          }
+        }
+
+        const limiteFallo = nota.isLarga ? (nota.tiempoTarget + nota.duracion) : nota.tiempoTarget;
+
+        if (tiempoAudioMs > limiteFallo + VENTANA_HIT) {
+          if (nota.isLarga && nota.estaSiendoSostenida) {
+            registrarFallo();
+          } else if (!nota.hitInsideVentana) {
+            registrarFallo();
+          }
+          eliminarNota(i);
+        }
+      }
+
+      requestAnimationFrame(bucleJuego);
+    }
+
+    // --- VISUAL ---
+    function crearNotaVisual(info) {
+      const carrilEl = document.getElementById(`carril-${info.carril}`);
+      const notaEl = document.createElement('div');
+      notaEl.className = `nota ${clasesColor[info.carril]}`;
+      notaEl.style.top = `${Y_START}px`;
+      carrilEl.appendChild(notaEl);
+
+      const nuevaNota = {
+        elemento: notaEl,
+        carril: info.carril,
+        tiempoTarget: info.tiempo,
+        duracion: info.duracion || 0,
+        isLarga: info.duracion > MIN_DURACION_LARGA,
+        cuerpoElemento: null,
+        hitInsideVentana: false,
+        estaSiendoSostenida: false
+      };
+
+      if (nuevaNota.isLarga) {
+        const cuerpoEl = document.createElement('div');
+        cuerpoEl.className = `nota-larga-cuerpo ${clasesColor[info.carril]}`;
+        cuerpoEl.style.top = `${Y_START}px`;
+        carrilEl.appendChild(cuerpoEl);
+        nuevaNota.cuerpoElemento = cuerpoEl;
+      }
+
+      notasActivas.push(nuevaNota);
+    }
+
+    function eliminarNota(index) {
+      if (notasActivas[index]) {
+        notasActivas[index].elemento.remove();
+        if (notasActivas[index].cuerpoElemento) notasActivas[index].cuerpoElemento.remove();
+        notasActivas.splice(index, 1);
+      }
+    }
+
+    // --- CONTROLES Y MECÁNICAS ---
+    function presionarMecanica(carril) {
+      if (!isPlaying) return;
+      teclasPresionadas[carril] = true;
+      visualizarTecla(carril, true);
+
+      const tiempoActualMs = audio.currentTime * 1000;
+      const notasEnCarril = notasActivas
+        .filter(n => n.carril === carril && !n.hitInsideVentana)
+        .sort((a, b) => Math.abs(a.tiempoTarget - tiempoActualMs) - Math.abs(b.tiempoTarget - tiempoActualMs));
+
+      if (notasEnCarril.length > 0) {
+        const nota = notasEnCarril[0];
+        const desvio = Math.abs(nota.tiempoTarget - tiempoActualMs);
+
+        if (desvio <= VENTANA_HIT) {
+          nota.hitInsideVentana = true;
+          if (nota.isLarga) {
+            nota.estaSiendoSostenida = true;
+            nota.elemento.classList.add('nota-hit');
+            actualizarPuntos(50);
+          } else {
+            actualizarPuntos(100);
+            nota.elemento.classList.add('nota-hit');
+            setTimeout(() => eliminarNota(notasActivas.indexOf(nota)), 100);
+          }
+        } else if (tiempoActualMs > nota.tiempoTarget - VENTANA_HIT * 2) {
+          registrarFallo();
+        }
+      }
+    }
+
+    function soltarMecanica(carril) {
+      teclasPresionadas[carril] = false;
+      visualizarTecla(carril, false);
+
+      notasActivas.forEach(nota => {
+        if (nota.carril === carril && nota.isLarga && nota.estaSiendoSostenida) {
+          nota.estaSiendoSostenida = false;
+        }
+      });
+    }
+
+    function actualizarPuntos(cantidad) {
+      puntos += cantidad * (combo > 10 ? 2 : 1);
+      puntosEl.innerText = puntos;
+      combo++;
+      if (combo > 1) {
+        comboEl.innerText = `x${combo}`;
+        comboEl.style.opacity = 1;
+      }
+    }
+
+    function registrarFallo() {
+      combo = 0;
+      comboEl.style.opacity = 0;
+      pistaEl.style.borderColor = '#f00';
+      setTimeout(() => pistaEl.style.borderColor = '#444', 100);
+    }
+
+    // --- LISTENERS ---
+    document.querySelectorAll('.tecla').forEach(btn => {
+      btn.addEventListener('pointerdown', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        const carril = parseInt(btn.getAttribute('data-carril'));
+        presionarMecanica(carril);
+      });
+
+      window.addEventListener('pointerup', (e) => {
+        const carril = parseInt(btn.getAttribute('data-carril'));
+        if (teclasPresionadas[carril]) soltarMecanica(carril);
+      });
+      window.addEventListener('pointercancel', (e) => {
+        const carril = parseInt(btn.getAttribute('data-carril'));
+        if (teclasPresionadas[carril]) soltarMecanica(carril);
+      });
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.repeat) return;
+      const tecla = e.key.toLowerCase();
+      if (mapeoTeclas[tecla] !== undefined) {
+        presionarMecanica(mapeoTeclas[tecla]);
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      const tecla = e.key.toLowerCase();
+      if (mapeoTeclas[tecla] !== undefined) {
+        soltarMecanica(mapeoTeclas[tecla]);
+      }
+    });
+
+    function visualizarTecla(carril, presionada) {
+      const btn = document.getElementById(`btn-${carril}`);
+      if (presionada) btn.classList.add('presionada');
+      else btn.classList.remove('presionada');
+    }
+
+    // --- CONTROL DE INICIO ---
+    const contenedorInicio = document.getElementById('contenedor-inicio');
+    document.getElementById('btn-inicio').addEventListener('click', () => {
+      recalcularMedidas();
+      contenedorInicio.style.display = 'none';
+      isPlaying = true;
+      audio.play().catch(e => alert("Error al reproducir audio"));
+      bucleJuego();
+    });
+  </script>
+</body>
+
+</html>
